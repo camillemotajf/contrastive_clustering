@@ -13,7 +13,7 @@ class WAGCNLayer(nn.Module):
         
         self.is_last_layer = is_last_layer
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
         B, T, D = x.shape
 
         xw1 = F.relu(self.W_1(x)) 
@@ -25,11 +25,18 @@ class WAGCNLayer(nn.Module):
         A_T = torch.exp(-dist).unsqueeze(0).expand(B, T, T) 
 
         A = A_F + A_T
+        if mask is not None:
+            pair_mask = mask.unsqueeze(1) & mask.unsqueeze(2)
+            A = A.masked_fill(~pair_mask, 0.0)
+        A = A / (A.sum(dim=-1, keepdim=True) + 1e-8)
 
         out = self.W_gcn(torch.bmm(A, x)) 
 
         res = self.conv_res(x.transpose(1, 2)).transpose(1, 2) 
+        result = out + res
+        if mask is not None:
+            result = result.masked_fill(~mask.unsqueeze(-1), 0.0)
         
         if self.is_last_layer:
-            return torch.sigmoid(out + res)
-        return F.relu(out + res)
+            return torch.sigmoid(result)
+        return F.relu(result)

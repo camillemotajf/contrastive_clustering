@@ -1,4 +1,7 @@
 torch==2.2.0
 torchvision==0.17.0
 pandas
-numpy
+numpy<2
+sentence-transformers==2.7.0
+transformers<5
+matplotlib

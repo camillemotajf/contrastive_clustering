@@ -17,18 +17,20 @@ class CrossBatchMemoryBank:
         self.abnormal_center = self.abnormal_center.detach()
 
 class BotDetectionNet(nn.Module):
-    def __init__(self, feature_dim):
+    def __init__(self, feature_dim, embedding_dim=32):
         super().__init__()
         self.layer1 = WAGCNLayer(feature_dim, 128)
         self.layer2 = WAGCNLayer(128, 64)
-        self.layer3 = WAGCNLayer(64, 32)
+        self.layer3 = WAGCNLayer(64, embedding_dim)
         
-        self.classifier = nn.Linear(32, 1)
+        self.classifier = nn.Linear(embedding_dim, 1)
 
-    def forward(self, x):
-        h1 = self.layer1(x) 
-        h2 = self.layer2(h1)
-        h3 = self.layer3(h2)
+    def forward(self, x, mask=None):
+        h1 = self.layer1(x, mask=mask) 
+        h2 = self.layer2(h1, mask=mask)
+        h3 = self.layer3(h2, mask=mask)
         
         scores = torch.sigmoid(self.classifier(h3)) 
-        return scores, h1
+        if mask is not None:
+            scores = scores.masked_fill(~mask.unsqueeze(-1), 0.0)
+        return scores, h3

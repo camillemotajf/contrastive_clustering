@@ -1,12 +1,13 @@
 import torch
-from torch.functional import F
+import torch.nn.functional as F
 
-def mil_loss(scores, labels, k=3):
+def mil_loss(scores, labels, k=3, mask=None):
   
     B = scores.shape[0]
     loss = 0.0
     for i in range(B):
-        topk_scores, _ = torch.topk(scores[i, :, 0], k)
+        valid_scores = scores[i, :, 0] if mask is None else scores[i, mask[i], 0]
+        topk_scores, _ = torch.topk(valid_scores, min(k, valid_scores.shape[0]))
         mean_score = torch.mean(topk_scores)
         
         if labels[i] == 1: # Bot
@@ -16,7 +17,7 @@ def mil_loss(scores, labels, k=3):
             
     return loss / B
 
-def contrastive_clustering_loss(features, scores, labels, memory_bank, k=3, tau=0.1):
+def contrastive_clustering_loss(features, scores, labels, memory_bank, k=3, tau=0.1, mask=None):
   
     B = features.shape[0]
     c_n = memory_bank.normal_center.to(features.device)
@@ -24,8 +25,10 @@ def contrastive_clustering_loss(features, scores, labels, memory_bank, k=3, tau=
     
     loss = 0.0
     for i in range(B):
-        topk_idx = torch.topk(scores[i, :, 0], k)[1]
-        bag_features = features[i, topk_idx, :].mean(dim=0)
+        valid_scores = scores[i, :, 0] if mask is None else scores[i, mask[i], 0]
+        valid_features = features[i] if mask is None else features[i, mask[i]]
+        topk_idx = torch.topk(valid_scores, min(k, valid_scores.shape[0]))[1]
+        bag_features = valid_features[topk_idx, :].mean(dim=0)
 
         if labels[i] == 1:
             pos_center, neg_center = c_a, c_n

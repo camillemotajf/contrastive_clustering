@@ -7,4 +7,10 @@ requires-python = ">=3.11"
 dependencies = [
     "torch==2.2.0",
     "torchvision==0.17.0",
+    "numpy<2",
+    "pandas",
+    "sentence-transformers==2.7.0",
+    "transformers<5",
+    "matplotlib",
+    "ipython>=9.13.0",
 ]
